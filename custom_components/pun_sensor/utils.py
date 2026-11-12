@@ -432,19 +432,22 @@ def extract_xml(archive: ZipFile, pun_data: PunData, today: date) -> PunData:
 
     Args:
     archive (ZipFile): archivio ZIP con i file XML all'interno.
-    pun_data (PunData): riferimento alla struttura che verrà modificata con i dati da XML.
+    pun_data (PunData): acquisizione precedente, usata soltanto per la zona geografica.
     today (date): data di oggi, utilizzata per memorizzare il prezzo zonale.
 
     Returns:
-    List[ list[MONO: float], list[F1: float], list[F2: float], list[F3: float] ]
+    PunData: nuova acquisizione; quella precedente resta intatta anche in caso di errore.
 
     """
     # Carica le festività
     it_holidays = holidays.IT()  # type: ignore[attr-defined]
 
-    # Azzera i dati precedenti
-    for fascia_da_svuotare in pun_data.pun.values():
-        fascia_da_svuotare.clear()
+    # Pubblica la nuova acquisizione solo dopo il parsing completo. Non accumulare
+    # i giorni passati e non alterare la cache valida se un file non è leggibile.
+    previous_data = pun_data
+    pun_data = PunData()
+    pun_data.zona = previous_data.zona
+    tomorrow = today + timedelta(days=1)
 
     # Esamina ogni file XML nello ZIP (ordinandoli prima)
     for fn in sorted(archive.namelist()):
@@ -484,7 +487,7 @@ def extract_xml(archive: ZipFile, pun_data: PunData, today: date) -> PunData:
             max_periodi: int = 4 * get_total_hours(dat_date)
 
             # Considera solo oggi e domani per i prezzi ogni 15 minuti
-            if dat_date >= today:
+            if today <= dat_date <= tomorrow:
                 # Estrae le rimanenti informazioni
                 for prezzi in xml_root.iter("Prezzi15"):
                     # Verifica che il mercato sia corretto
@@ -611,7 +614,7 @@ def extract_xml(archive: ZipFile, pun_data: PunData, today: date) -> PunData:
                         pun_data.pun[fascia].append(prezzo)
 
                     # Per il PUN orario, considera solo oggi e domani
-                    if dat_date >= today:
+                    if today <= dat_date <= tomorrow:
                         # Salva il prezzo per quell'orario
                         pun_data.pun_orari[str(orario_prezzo)] = prezzo
                 else:
@@ -621,7 +624,7 @@ def extract_xml(archive: ZipFile, pun_data: PunData, today: date) -> PunData:
                     )
 
                 # Per i prezzi zonali, considera solo oggi e domani
-                if dat_date >= today:
+                if today <= dat_date <= tomorrow:
                     # Controlla che la zona del prezzo zonale sia impostata
                     if pun_data.zona is not None:
                         # Estrae il prezzo zonale dall'XML in un float
