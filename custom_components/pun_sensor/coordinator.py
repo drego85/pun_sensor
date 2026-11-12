@@ -140,6 +140,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         self._clock_tokens: dict[str, Callable] = {}
         self._web_tasks: set[asyncio.Task] = set()
         self._stopped = False
+        self.last_successful_update: datetime | None = None
         self.pun_values: PunValues = PunValues()
         self.fascia_corrente: Fascia | None = None
         self.fascia_successiva: Fascia | None = None
@@ -180,6 +181,11 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             self._clock_tokens[event] = async_track_point_in_time(
                 self.hass, action, when
             )
+
+    def _notify_clock(self, event: str) -> None:
+        """Notifica il tempo locale senza cancellare un errore di download."""
+        self.data = {COORD_EVENT: event}
+        self.async_update_listeners()
 
     def update_scan_minutes_from_config(
         self, hass: HomeAssistant, config: ConfigEntry, new_minute: bool = False
@@ -331,8 +337,9 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         )
 
         # Notifica che i dati PUN (prezzi) sono stati aggiornati
+        self.last_successful_update = dt_util.now(time_zone=tz_pun)
         self.async_set_updated_data({COORD_EVENT: EVENT_UPDATE_PUN})
-        return {}
+        return {COORD_EVENT: EVENT_UPDATE_PUN}
 
     async def update_fascia(self, now=None) -> None:
         """Aggiorna la fascia oraria corrente (al cambio fascia)."""
@@ -366,7 +373,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         )
 
         # Notifica che i dati sono stati aggiornati (fascia)
-        self.async_set_updated_data({COORD_EVENT: EVENT_UPDATE_FASCIA})
+        self._notify_clock(EVENT_UPDATE_FASCIA)
 
         # Schedula la prossima esecuzione
         self._schedule_clock(
@@ -401,6 +408,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         # Errore nel fetch dei dati se la response non e' 200
         # pylint: disable=broad-exception-caught
         except (Exception, UpdateFailed, ServerConnectionError) as e:
+            self.async_set_update_error(e)
             # Errori durante l'esecuzione dell'aggiornamento, riprova dopo
             # Annulla eventuali schedulazioni attive
             self.clean_tokens()
@@ -472,7 +480,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         self.orario_prezzo = get_hour_datetime(dt_util.now(time_zone=tz_pun))
 
         # Notifica che i dati sono stati aggiornati (orario prezzo zonale)
-        self.async_set_updated_data({COORD_EVENT: EVENT_UPDATE_PREZZO_ZONALE})
+        self._notify_clock(EVENT_UPDATE_PREZZO_ZONALE)
 
         # Schedula la prossima esecuzione all'ora successiva
         # (tenendo conto del cambio ora legale/solare)
@@ -494,7 +502,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         self.orario_prezzo_15min = get_15min_datetime(dt_util.now(time_zone=tz_pun))
 
         # Notifica che i dati sono stati aggiornati (orario prezzo zonale a 15 minuti)
-        self.async_set_updated_data({COORD_EVENT: EVENT_UPDATE_PREZZO_ZONALE_15MIN})
+        self._notify_clock(EVENT_UPDATE_PREZZO_ZONALE_15MIN)
 
         # Schedula la prossima esecuzione ai 15 minuti successivi ("spaccati")
         next_update_prezzo_zonale_15min: datetime = add_timedelta_via_utc(

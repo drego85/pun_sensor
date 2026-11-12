@@ -113,6 +113,15 @@ In maniera simile al prezzo zonale, anche i valori del PUN orario (nome sensore:
 
 ### In caso di problemi
 
+Le medie mensili e il prezzo della fascia corrente espongono anche gli attributi
+`dati_del`, `ultimo_aggiornamento` e `dati_non_aggiornati`. Un errore di rete non
+cancella l'ultima acquisizione valida della giornata, ma la contrassegna come non
+aggiornata. Il semplice passaggio di ora o fascia non cancella l'errore di download.
+Le medie del giorno precedente e i vecchi backup senza data non vengono mostrati
+come medie aggiornate: occorre una nuova acquisizione. Il ripristino del prezzo
+della fascia corrente richiede anche che la fascia memorizzata corrisponda a quella
+attuale. I prezzi orari e a 15 minuti restano legati al loro preciso intervallo.
+
 È possibile abilitare la registrazione dei log tramite l'interfaccia grafica in **Impostazioni > Dispositivi e servizi > Prezzi PUN del mese** e cliccando sul pulsante **⋮ > Abilita la registrazione di debug**.
 
 ![Abilitazione log di debug](screenshot_debug_1.png "Abilitazione log di debug")
