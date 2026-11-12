@@ -2,8 +2,16 @@
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
 
-[![Validate](https://github.com/virtualdj/pun_sensor/actions/workflows/validate.yaml/badge.svg?branch=master)](https://github.com/virtualdj/pun_sensor/actions/workflows/validate.yaml)
-[![release](https://img.shields.io/github/v/release/virtualdj/pun_sensor?style=flat-square)](https://github.com/virtualdj/pun_sensor/releases)
+[![Validate](https://github.com/drego85/pun_sensor/actions/workflows/validate.yaml/badge.svg?branch=master)](https://github.com/drego85/pun_sensor/actions/workflows/validate.yaml)
+[![release](https://img.shields.io/github/v/release/drego85/pun_sensor?style=flat-square)](https://github.com/drego85/pun_sensor/releases)
+
+Fork di [virtualdj/pun_sensor](https://github.com/virtualdj/pun_sensor), mantenuto da
+[drego85](https://github.com/drego85). Le correzioni generiche vengono preparate con
+test di regressione per poterle proporre anche al progetto originale. I riferimenti
+storici e l'attribuzione agli autori originali sono conservati.
+
+Il fork è in sviluppo: non è ancora stata pubblicata una release collaudata.
+Non installare un branch di sviluppo su un'istanza di produzione senza backup.
 
 Integrazione per **Home Assistant** (basata inizialmente sullo script [pun-fasce](https://github.com/virtualdj/pun-fasce)) che mostra i prezzi stimati del mese corrente per fasce orarie (F1, F2, F3, mono-oraria e F23\*) nonché la fascia oraria attuale.
 
@@ -13,7 +21,7 @@ Oltre a questo, sono stati inseriti un sensore con il prezzo del PUN orario e un
 
 ## Installazione in Home Assistant
 
-Installare usando [HACS](https://hacs.xyz/) tramite il menu con i tre puntini nell'angolo in alto a destra e scegliendo _Add custom repository_ e aggiungendo l'URL https://github.com/virtualdj/pun_sensor alla lista.
+Quando sarà disponibile una release del fork, installare usando [HACS](https://hacs.xyz/) tramite il menu con i tre puntini nell'angolo in alto a destra e scegliendo _Add custom repository_ e aggiungendo l'URL https://github.com/drego85/pun_sensor alla lista.
 
 Installare **manualmente** clonando o copiando questa repository e poi copiando la cartella `custom_components/pun_sensor` nella cartella `/custom_components/pun_sensor` di Home Assistant, che andrà successivamente riavviato.
 
@@ -113,7 +121,7 @@ Il tasto verrà modificato come nell'immagine qui sotto; dopo che si verifica il
 
 ![Disabilitazione log di debug](screenshot_debug_2.png "Disabilitazione log di debug")
 
-In questo modo verrà scaricato un file di log con le informazioni da allegare alle [Issue](https://github.com/virtualdj/pun_sensor/issues).
+In questo modo verrà scaricato un file di log con le informazioni da allegare alle [Issue del fork](https://github.com/drego85/pun_sensor/issues), dopo aver rimosso eventuali dati personali o credenziali.
 
 ![Download del file di log](screenshot_debug_3.png "Download del file di log")
 
