@@ -7,8 +7,8 @@ import subprocess
 import sys
 
 
-def test_release_manifest_includes_pinned_dependency(tmp_path):
-    """Published artifacts must include a version and the tested dependency."""
+def test_release_manifest_includes_tested_minimum_dependency(tmp_path):
+    """Follow HA's shared package upgrades while retaining the tested minimum."""
     root = Path(__file__).parents[1]
     component = tmp_path / "custom_components/pun_sensor"
     component.mkdir(parents=True)
@@ -29,5 +29,5 @@ def test_release_manifest_includes_pinned_dependency(tmp_path):
     )
     manifest = json.loads((component / "manifest.json").read_text())
     assert manifest["version"] == "4.0.2-beta.2"
-    assert manifest["requirements"] == ["holidays==0.108"]
+    assert manifest["requirements"] == ["holidays>=0.108"]
     assert manifest["domain"] == "pun_sensor"

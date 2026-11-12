@@ -1,1 +1,1 @@
-holidays==0.108
+holidays>=0.108
