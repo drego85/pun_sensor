@@ -1,6 +1,6 @@
 # Prezzi PUN del mese
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
+[![marketplace_badge](https://img.shields.io/badge/Home_Assistant-Marketplace-41BDF5.svg?style=for-the-badge)](https://www.home-assistant.io/integrations/marketplace/)
 
 [![Validate](https://github.com/drego85/pun_sensor/actions/workflows/validate.yaml/badge.svg?branch=master)](https://github.com/drego85/pun_sensor/actions/workflows/validate.yaml)
 [![release](https://img.shields.io/github/v/release/drego85/pun_sensor?style=flat-square)](https://github.com/drego85/pun_sensor/releases)
@@ -21,7 +21,30 @@ Oltre a questo, sono stati inseriti un sensore con il prezzo del PUN orario e un
 
 ## Installazione in Home Assistant
 
-Quando sarà disponibile una release del fork, installare usando [HACS](https://hacs.xyz/) tramite il menu con i tre puntini nell'angolo in alto a destra e scegliendo _Add custom repository_ e aggiungendo l'URL https://github.com/drego85/pun_sensor alla lista.
+Le istruzioni seguenti valgono quando sarà disponibile una release del fork.
+
+### Home Assistant 2026.11 e successive
+
+HACS è integrato in Home Assistant come [Marketplace](https://www.home-assistant.io/integrations/marketplace/).
+Non installare separatamente la vecchia integrazione HACS.
+
+Aprire **Impostazioni > Marketplace**, scegliere **Aggiungi da link** (*Add from link*)
+e inserire `https://github.com/drego85/pun_sensor`. Per aggiungere repository
+personalizzati il Marketplace richiede il collegamento a GitHub. Aprire quindi
+la pagina del repository, selezionare **Installa** e seguire la configurazione e le
+eventuali richieste di riavvio mostrate da Home Assistant.
+
+L'integrazione resta un componente della comunità: l'inclusione del Marketplace
+nel Core non significa che questo codice sia verificato o supportato dal progetto
+Home Assistant.
+
+### Home Assistant 2026.10 e precedenti
+
+Usare [HACS](https://hacs.xyz/) tramite il menu con i tre puntini nell'angolo in alto
+a destra, scegliendo *Add custom repository* e aggiungendo
+`https://github.com/drego85/pun_sensor` alla lista.
+
+### Installazione manuale
 
 Installare **manualmente** clonando o copiando questa repository e poi copiando la cartella `custom_components/pun_sensor` nella cartella `/custom_components/pun_sensor` di Home Assistant, che andrà successivamente riavviato.
 
