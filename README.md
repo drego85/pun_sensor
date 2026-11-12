@@ -10,7 +10,9 @@ Fork di [virtualdj/pun_sensor](https://github.com/virtualdj/pun_sensor), mantenu
 test di regressione per poterle proporre anche al progetto originale. I riferimenti
 storici e l'attribuzione agli autori originali sono conservati.
 
-Il fork è in sviluppo: non è ancora stata pubblicata una release collaudata.
+Il fork è in sviluppo: è disponibile una prerelease di prova, non ancora una
+release stabile. Le correzioni successive restano sul ramo `fix/reliability`
+finché non vengono incluse in un nuovo pacchetto di release.
 Non installare un branch di sviluppo su un'istanza di produzione senza backup.
 
 Integrazione per **Home Assistant** (basata inizialmente sullo script [pun-fasce](https://github.com/virtualdj/pun-fasce)) che mostra i prezzi stimati del mese corrente per fasce orarie (F1, F2, F3, mono-oraria e F23\*) nonché la fascia oraria attuale.
@@ -21,7 +23,9 @@ Oltre a questo, sono stati inseriti un sensore con il prezzo del PUN orario e un
 
 ## Installazione in Home Assistant
 
-Le istruzioni seguenti valgono quando sarà disponibile una release del fork.
+Per la prerelease abilitare le versioni beta nel Marketplace e selezionare
+esplicitamente il tag desiderato. Non installare il vecchio `master` per ottenere
+le correzioni del ramo `fix/reliability`.
 
 ### Home Assistant 2026.11 e successive
 
@@ -174,8 +178,21 @@ python3.14 -m venv .venv
 Le dipendenze di test fissano Home Assistant 2026.10.4. I test usano una sua
 istanza temporanea, archivi XML sintetici e risposte HTTP simulate; le connessioni
 di rete sono bloccate. Non accedono a un'istanza HA reale né al GME. La suite copre
-parser/DST, cache, unload/reload, errori e ripristino, ma non certifica tutte le
-versioni di HA o la correttezza dei rendiconti GSE. I controlli GitHub Actions sono
+parser/DST, duplicati e intervalli fuori giornata, cache e cambio zona,
+unload/reload, errori e ripristino. Verifica inoltre il download automatico,
+mezzanotte e cambio mese con un orologio simulato, le traduzioni del selettore e
+il generatore del manifest di release. Non certifica tutte le versioni di HA o
+la correttezza dei rendiconti GSE. I controlli GitHub Actions sono
 predisposti anche per i branch di sviluppo e per le PR, con permessi in sola lettura.
+
+Il selettore distingue le zone italiane (`Italia (…)`), le zone virtuali estere
+(`Estero (…)`) e le interconnessioni di coupling (`Scambio (…)`). Le etichette
+non modificano i codici GME salvati. Corsica e Corsica AC sono zone virtuali
+estere, non zone geografiche italiane: vedere il
+[catalogo delle zone GME](https://gme.mercatoelettrico.org/portals/0/Documents/it-IT/20231018_ME_Zone.pdf).
+
+Restano da irrobustire la diagnostica e il recupero delle curve di domani o a 15 min
+quando sono incomplete, senza invalidare quelle di oggi. La compatibilità con
+il minimo HA 2023.4 dichiarato storicamente non è coperta dalla suite attuale.
 
 Ho lasciato un diario dell'esperienza di programmazione di questa integrazione in [questa pagina](DEVELOPMENT.md). Potrete trovare qualche lamentela, ma soprattutto link alle pagine dei progetti che mi hanno aiutato a svilupparla così com'è ora.
