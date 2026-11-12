@@ -44,3 +44,39 @@ def test_duplicate_intervals_are_rejected(price_archive, quarterly, extra_file):
     with pytest.raises(ValueError, match="duplicat"):
         _parse_download(modified_archive(valid, duplicate), previous, day)
     assert previous.pun[Fascia.MONO] == old_monthly
+
+
+@pytest.mark.parametrize("quarterly", [False, True])
+@pytest.mark.parametrize(
+    "day", [date(2026, 3, 29), date(2026, 11, 12), date(2026, 10, 25)]
+)
+def test_out_of_day_periods_are_rejected(price_archive, quarterly, day):
+    """Do not spill a nominal extra interval into tomorrow, including DST."""
+    valid = price_archive([day])
+    previous = _parse_download(valid, PunData(), day)
+
+    def append_extra(name, root):
+        if ("Prezzi15" in name) == quarterly:
+            record = deepcopy(root[-1])
+            tag = "Periodo" if quarterly else "Ora"
+            record.find(tag).text = str(len(root) + 1)
+            root.append(record)
+        return False
+
+    with pytest.raises(ValueError, match="non valido"):
+        _parse_download(modified_archive(valid, append_extra), previous, day)
+
+
+@pytest.mark.parametrize("quarterly", [False, True])
+def test_record_dates_must_match_file_date(price_archive, quarterly):
+    """A mixed-date XML must not silently relabel another day's price."""
+    day = date(2026, 11, 12)
+    valid = price_archive([day])
+
+    def change_date(name, root):
+        if ("Prezzi15" in name) == quarterly:
+            root[-1].find("Data").text = "20261113"
+        return False
+
+    with pytest.raises(ValueError, match="Data incoerente"):
+        _parse_download(modified_archive(valid, change_date), PunData(), day)

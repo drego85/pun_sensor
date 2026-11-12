@@ -2,6 +2,7 @@
 
 from datetime import date, datetime, timedelta, timezone
 import logging
+from xml.etree.ElementTree import Element
 from zipfile import ZipFile
 from zoneinfo import ZoneInfo
 
@@ -427,6 +428,26 @@ def get_datetime_from_periodo_15min(
     return end_utc.astimezone(ref_tz)
 
 
+def _validated_period(
+    record: Element,
+    day: date,
+    tag: str,
+    maximum: int,
+    seen: set[tuple[date, bool, int]],
+) -> int:
+    """Valida data, intervallo e unicità prima di modificare le nuove mappe."""
+    if record.findtext("Data") != day.strftime("%Y%m%d"):
+        raise ValueError(f"Data incoerente nel file XML del {day}")
+    period = int(record.findtext(tag) or "")
+    if not 1 <= period <= maximum:
+        raise ValueError(f"Periodo {period} non valido per {day} (max: {maximum}).")
+    key = (day, tag == "Periodo", period)
+    if key in seen:
+        raise ValueError(f"Periodo duplicato: {key}")
+    seen.add(key)
+    return period
+
+
 def extract_xml(archive: ZipFile, pun_data: PunData, today: date) -> PunData:
     """Estrae i valori del pun per ogni fascia da un archivio zip contenente un XML.
 
@@ -510,21 +531,9 @@ def extract_xml(archive: ZipFile, pun_data: PunData, today: date) -> PunData:
                         break
 
                     # Estrae il periodo dall'XML
-                    periodo_xml: int = int(prezzi.find("Periodo").text)
-                    period_key = (dat_date, True, periodo_xml)
-                    if period_key in seen_periods:
-                        raise ValueError(f"Periodo duplicato: {period_key}")
-                    seen_periods.add(period_key)
-
-                    # Valida il periodo XML
-                    # 1 .. 96 normalmente, ma anche 1..92 o 1..100 nei cambi ora
-                    if not (1 <= periodo_xml <= max_periodi):
-                        _LOGGER.warning(
-                            "Periodo %s non valido per %s (max: %s).",
-                            periodo_xml,
-                            dat_string,
-                            max_periodi,
-                        )
+                    periodo_xml = _validated_period(
+                        prezzi, dat_date, "Periodo", max_periodi, seen_periods
+                    )
 
                     # Converte il periodo in un datetime
                     orario_prezzo_15min: datetime = get_datetime_from_periodo_15min(
@@ -583,21 +592,9 @@ def extract_xml(archive: ZipFile, pun_data: PunData, today: date) -> PunData:
                     break
 
                 # Estrae l'ora dall'XML
-                ora_xml: int = int(prezzi.find("Ora").text)
-                period_key = (dat_date, False, ora_xml)
-                if period_key in seen_periods:
-                    raise ValueError(f"Periodo duplicato: {period_key}")
-                seen_periods.add(period_key)
-
-                # Valida l'orario XML
-                # 1..24 normalmente, ma anche 1..23 o 1..25 nei cambi ora
-                if not (1 <= ora_xml <= max_ore):
-                    _LOGGER.warning(
-                        "Orario %s non valido per %s (max: %s).",
-                        ora_xml,
-                        dat_string,
-                        max_ore,
-                    )
+                ora_xml = _validated_period(
+                    prezzi, dat_date, "Ora", max_ore, seen_periods
+                )
 
                 # Converte l'ora in un datetime
                 orario_prezzo: datetime = get_datetime_from_ordinal_hour(
