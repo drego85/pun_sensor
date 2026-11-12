@@ -1,0 +1,33 @@
+"""Exercise the real release-manifest generator in a temporary directory."""
+
+import json
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+
+
+def test_release_manifest_includes_pinned_dependency(tmp_path):
+    """Published artifacts must include a version and the tested dependency."""
+    root = Path(__file__).parents[1]
+    component = tmp_path / "custom_components/pun_sensor"
+    component.mkdir(parents=True)
+    shutil.copy(root / "custom_components/pun_sensor/manifest.json", component)
+    shutil.copy(root / "requirements.txt", tmp_path)
+    subprocess.run(
+        [
+            sys.executable,
+            "-B",
+            str(root / ".github/workflows/update_manifest.py"),
+            "--version",
+            "4.0.2-beta.2",
+        ],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    manifest = json.loads((component / "manifest.json").read_text())
+    assert manifest["version"] == "4.0.2-beta.2"
+    assert manifest["requirements"] == ["holidays==0.108"]
+    assert manifest["domain"] == "pun_sensor"
