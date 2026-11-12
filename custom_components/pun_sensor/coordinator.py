@@ -5,13 +5,14 @@ from collections.abc import Callable
 from datetime import date, datetime, timedelta
 import io
 import logging
+from math import isfinite
 import random
 from statistics import mean
 from typing import Any
 import zipfile
 from zoneinfo import ZoneInfo
 
-from aiohttp import ClientSession, ServerConnectionError
+from aiohttp import ClientSession, ClientTimeout, ServerConnectionError
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
@@ -41,6 +42,7 @@ from .utils import (
     get_fascia,
     get_hour_datetime,
     get_next_date,
+    get_total_hours,
 )
 
 # Ottiene il logger
@@ -48,6 +50,42 @@ _LOGGER = logging.getLogger(__name__)
 
 # Usa sempre il fuso orario italiano (i dati del sito sono per il mercato italiano)
 tz_pun: ZoneInfo = ZoneInfo("Europe/Rome")
+
+MAX_DOWNLOAD_BYTES = 10 * 1024 * 1024
+MAX_UNCOMPRESSED_BYTES = 64 * 1024 * 1024
+MAX_ARCHIVE_FILES = 128
+
+
+def _parse_download(payload: bytes, previous: PunData, today: date) -> PunData:
+    """Valida e analizza lo ZIP nel thread executor, senza modificare la cache."""
+    with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+        entries = archive.infolist()
+        if (
+            len(entries) > MAX_ARCHIVE_FILES
+            or sum(info.file_size for info in entries) > MAX_UNCOMPRESSED_BYTES
+        ):
+            raise UpdateFailed("Archivio GME troppo grande dopo la decompressione.")
+        result = extract_xml(archive, previous, today)
+    current_prices = [
+        key for key in result.pun_orari if datetime.fromisoformat(key).date() == today
+    ]
+    if len(current_prices) != get_total_hours(today):
+        raise UpdateFailed("L'archivio GME non contiene tutti i prezzi orari di oggi.")
+    price_sets = [
+        *result.pun.values(),
+        result.pun_orari.values(),
+        result.prezzi_zonali.values(),
+        result.pun_15min.values(),
+        result.prezzi_zonali_15min.values(),
+    ]
+    if any(
+        not isfinite(price)
+        for prices in price_sets
+        for price in prices
+        if price is not None
+    ):
+        raise UpdateFailed("L'archivio GME contiene un prezzo non finito.")
+    return result
 
 
 class PUNDataUpdateCoordinator(DataUpdateCoordinator):
@@ -223,7 +261,8 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             return {}
 
         # Calcola l'intervallo di date per il mese corrente
-        date_end: date = dt_util.now().date()
+        today = dt_util.now(time_zone=tz_pun).date()
+        date_end: date = today
         date_start: date = date(date_end.year, date_end.month, 1)
 
         # All'inizio del mese, aggiunge i valori del mese precedente
@@ -257,10 +296,9 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
 
         # Effettua il download dello ZIP con i file XML
         _LOGGER.debug("Inizio download file ZIP con XML.")
-        async with self.session.get(download_url, headers=heads) as response:
-            # Aspetta la request
-            bytes_response = await response.read()
-
+        async with self.session.get(
+            download_url, headers=heads, timeout=ClientTimeout(total=30)
+        ) as response:
             # Se la richiesta NON e' andata a buon fine ritorna l'errore subito
             if response.status != 200:
                 _LOGGER.error("Richiesta fallita con errore %s", response.status)
@@ -268,32 +306,27 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
                     f"Richiesta fallita con errore {response.status}"
                 )
 
-            # La richiesta e' andata a buon fine, tenta l'estrazione
-            try:
-                archive = zipfile.ZipFile(io.BytesIO(bytes_response), "r")
+            payload = bytearray()
+            async for chunk in response.content.iter_chunked(64 * 1024):
+                payload.extend(chunk)
+                if len(payload) > MAX_DOWNLOAD_BYTES:
+                    raise UpdateFailed("Risposta GME troppo grande.")
 
-            # Ritorna error se l'output non è uno ZIP, o ha un errore IO
-            except (zipfile.BadZipfile, OSError) as e:  # not a zip:
-                _LOGGER.error(
-                    "Download fallito con URL: %s, lunghezza %s, risposta %s",
-                    download_url,
-                    response.content_length,
-                    response.status,
-                )
-                raise UpdateFailed("Archivio ZIP scaricato dal sito non valido.") from e
-
-        # Mostra i file nell'archivio
-        _LOGGER.debug(
-            "%s file trovati nell'archivio (%s)",
-            len(archive.namelist()),
-            ", ".join(str(fn) for fn in archive.namelist()),
+        # ZIP, XML e festività non devono bloccare l'event loop di HA.
+        new_data = await self.hass.async_add_executor_job(
+            _parse_download, bytes(payload), self.pun_data, today
         )
-
-        # Estrae i dati dall'archivio
-        self.pun_data = extract_xml(
-            archive, self.pun_data, dt_util.now(time_zone=tz_pun).date()
-        )
-        archive.close()
+        if self._stopped:
+            return {}
+        if dt_util.now(time_zone=tz_pun).date() != today:
+            raise UpdateFailed(
+                "La data è cambiata durante l'acquisizione GME; riprovare."
+            )
+        if new_data.zona != self.pun_data.zona:
+            raise UpdateFailed(
+                "La zona è cambiata durante l'acquisizione GME; riprovare."
+            )
+        self.pun_data = new_data
 
         # Per ogni fascia, calcola il valore del pun
         for fascia, value_list in self.pun_data.pun.items():
