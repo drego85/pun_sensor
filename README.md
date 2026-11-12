@@ -136,4 +136,23 @@ In questo modo verrà scaricato un file di log con le informazioni da allegare a
 
 ## Note di sviluppo
 
+### Test del fork
+
+Usare un ambiente separato da Home Assistant di produzione con Python 3.14:
+
+```sh
+python3.14 -m venv .venv
+.venv/bin/python -m pip install -r requirements_test.txt
+.venv/bin/python -m pytest tests -q
+.venv/bin/python -m ruff check custom_components/pun_sensor tests
+.venv/bin/python -m ruff format --check custom_components/pun_sensor tests
+```
+
+Le dipendenze di test fissano Home Assistant 2026.10.4. I test usano una sua
+istanza temporanea, archivi XML sintetici e risposte HTTP simulate; le connessioni
+di rete sono bloccate. Non accedono a un'istanza HA reale né al GME. La suite copre
+parser/DST, cache, unload/reload, errori e ripristino, ma non certifica tutte le
+versioni di HA o la correttezza dei rendiconti GSE. I controlli GitHub Actions sono
+predisposti anche per i branch di sviluppo e per le PR, con permessi in sola lettura.
+
 Ho lasciato un diario dell'esperienza di programmazione di questa integrazione in [questa pagina](DEVELOPMENT.md). Potrete trovare qualche lamentela, ma soprattutto link alle pagine dei progetti che mi hanno aiutato a svilupparla così com'è ora.
