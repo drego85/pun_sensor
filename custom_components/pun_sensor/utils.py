@@ -448,6 +448,7 @@ def extract_xml(archive: ZipFile, pun_data: PunData, today: date) -> PunData:
     pun_data = PunData()
     pun_data.zona = previous_data.zona
     tomorrow = today + timedelta(days=1)
+    seen_periods: set[tuple[date, bool, int]] = set()
 
     # Esamina ogni file XML nello ZIP (ordinandoli prima)
     for fn in sorted(archive.namelist()):
@@ -510,6 +511,10 @@ def extract_xml(archive: ZipFile, pun_data: PunData, today: date) -> PunData:
 
                     # Estrae il periodo dall'XML
                     periodo_xml: int = int(prezzi.find("Periodo").text)
+                    period_key = (dat_date, True, periodo_xml)
+                    if period_key in seen_periods:
+                        raise ValueError(f"Periodo duplicato: {period_key}")
+                    seen_periods.add(period_key)
 
                     # Valida il periodo XML
                     # 1 .. 96 normalmente, ma anche 1..92 o 1..100 nei cambi ora
@@ -579,6 +584,10 @@ def extract_xml(archive: ZipFile, pun_data: PunData, today: date) -> PunData:
 
                 # Estrae l'ora dall'XML
                 ora_xml: int = int(prezzi.find("Ora").text)
+                period_key = (dat_date, False, ora_xml)
+                if period_key in seen_periods:
+                    raise ValueError(f"Periodo duplicato: {period_key}")
+                seen_periods.add(period_key)
 
                 # Valida l'orario XML
                 # 1..24 normalmente, ma anche 1..23 o 1..25 nei cambi ora
