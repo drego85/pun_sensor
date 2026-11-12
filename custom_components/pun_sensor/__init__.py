@@ -43,6 +43,7 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry) -> bool:
     # Salva il coordinator nella configurazione
     coordinator: PUNDataUpdateCoordinator = PUNDataUpdateCoordinator(hass, config)
     hass.data.setdefault(DOMAIN, {})[config.entry_id] = coordinator
+    config.async_on_unload(coordinator.stop)
 
     # Aggiorna immediatamente la fascia oraria corrente
     await coordinator.update_fascia()

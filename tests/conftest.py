@@ -6,13 +6,25 @@ from io import BytesIO
 from zipfile import ZipFile
 
 import pytest
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.pun_sensor.const import CONF_SCAN_MINUTE, CONF_ZONA, DOMAIN
 from custom_components.pun_sensor.utils import get_total_hours
 
 
 @pytest.fixture(autouse=True)
 def custom_integrations(enable_custom_integrations):
     """Allow the real custom integration in the temporary HA instance."""
+
+
+@pytest.fixture
+def config_entry(hass) -> MockConfigEntry:
+    """Register a synthetic config entry without device or account credentials."""
+    entry = MockConfigEntry(
+        domain=DOMAIN, data={CONF_ZONA: "NORD", CONF_SCAN_MINUTE: 15}, version=2
+    )
+    entry.add_to_hass(hass)
+    return entry
 
 
 @pytest.fixture

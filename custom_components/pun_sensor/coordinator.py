@@ -1,5 +1,6 @@
 """Coordinator per pun_sensor."""
 
+import asyncio
 from collections.abc import Callable
 from datetime import date, datetime, timedelta
 import io
@@ -136,6 +137,9 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         # Inizializza i valori di default
         self.web_retries: list[int] = WEB_RETRIES_MINUTES.copy()
         self.schedule_token: Callable | None = None
+        self._clock_tokens: dict[str, Callable] = {}
+        self._web_tasks: set[asyncio.Task] = set()
+        self._stopped = False
         self.pun_values: PunValues = PunValues()
         self.fascia_corrente: Fascia | None = None
         self.fascia_successiva: Fascia | None = None
@@ -156,6 +160,26 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         if self.schedule_token is not None:
             self.schedule_token()
             self.schedule_token = None
+
+    @callback
+    def stop(self) -> None:
+        """Ferma callback e download quando la configurazione viene scaricata."""
+        self._stopped = True
+        self.clean_tokens()
+        for cancel in self._clock_tokens.values():
+            cancel()
+        self._clock_tokens.clear()
+        for task in self._web_tasks:
+            task.cancel()
+
+    def _schedule_clock(self, event: str, action: Callable, when: datetime) -> None:
+        """Mantiene una sola schedulazione per ciascun aggiornamento locale."""
+        if cancel := self._clock_tokens.pop(event, None):
+            cancel()
+        if not self._stopped:
+            self._clock_tokens[event] = async_track_point_in_time(
+                self.hass, action, when
+            )
 
     def update_scan_minutes_from_config(
         self, hass: HomeAssistant, config: ConfigEntry, new_minute: bool = False
@@ -189,6 +213,8 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Aggiornamento dati a intervalli prestabiliti."""
+        if self._stopped:
+            return {}
 
         # Calcola l'intervallo di date per il mese corrente
         date_end: date = dt_util.now().date()
@@ -310,6 +336,8 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def update_fascia(self, now=None) -> None:
         """Aggiorna la fascia oraria corrente (al cambio fascia)."""
+        if self._stopped:
+            return
 
         # Scrive l'ora corrente (a scopi di debug)
         _LOGGER.debug(
@@ -341,16 +369,30 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         self.async_set_updated_data({COORD_EVENT: EVENT_UPDATE_FASCIA})
 
         # Schedula la prossima esecuzione
-        async_track_point_in_time(
-            self.hass, self.update_fascia, self.prossimo_cambio_fascia
+        self._schedule_clock(
+            EVENT_UPDATE_FASCIA, self.update_fascia, self.prossimo_cambio_fascia
         )
 
     async def update_pun(self, now=None) -> None:
         """Aggiorna i prezzi PUN da Internet (funziona solo se schedulata)."""
+        if self._stopped:
+            return
+        task = asyncio.current_task()
+        assert task is not None
+        self._web_tasks.add(task)
+        try:
+            await self._update_pun()
+        finally:
+            self._web_tasks.discard(task)
+
+    async def _update_pun(self) -> None:
+        """Scarica i prezzi e programma il prossimo tentativo."""
         # Aggiorna i dati da web
         try:
             # Esegue l'aggiornamento
             await self._async_update_data()
+            if self._stopped:
+                return
 
             # Se non ci sono eccezioni, ha avuto successo
             # Ricarica i tentativi per la prossima esecuzione
@@ -423,6 +465,8 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def update_prezzo_zonale(self, now=None) -> None:
         """Aggiorna il prezzo zonale corrente (ogni ora)."""
+        if self._stopped:
+            return
 
         # Aggiorna il nuovo orario
         self.orario_prezzo = get_hour_datetime(dt_util.now(time_zone=tz_pun))
@@ -435,12 +479,16 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         next_update_prezzo_zonale: datetime = add_timedelta_via_utc(
             dt=self.orario_prezzo, hours=1
         )
-        async_track_point_in_time(
-            self.hass, self.update_prezzo_zonale, next_update_prezzo_zonale
+        self._schedule_clock(
+            EVENT_UPDATE_PREZZO_ZONALE,
+            self.update_prezzo_zonale,
+            next_update_prezzo_zonale,
         )
 
     async def update_prezzo_zonale_15min(self, now=None) -> None:
         """Aggiorna il prezzo zonale a 15 minuti corrente."""
+        if self._stopped:
+            return
 
         # Aggiorna il nuovo orario
         self.orario_prezzo_15min = get_15min_datetime(dt_util.now(time_zone=tz_pun))
@@ -452,6 +500,8 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         next_update_prezzo_zonale_15min: datetime = add_timedelta_via_utc(
             dt=self.orario_prezzo_15min, minutes=15
         )
-        async_track_point_in_time(
-            self.hass, self.update_prezzo_zonale_15min, next_update_prezzo_zonale_15min
+        self._schedule_clock(
+            EVENT_UPDATE_PREZZO_ZONALE_15MIN,
+            self.update_prezzo_zonale_15min,
+            next_update_prezzo_zonale_15min,
         )
