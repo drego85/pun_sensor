@@ -86,6 +86,21 @@ async def update_listener(hass: HomeAssistant, config: ConfigEntry) -> None:
     # Recupera il coordinator
     coordinator: PUNDataUpdateCoordinator = hass.data[DOMAIN][config.entry_id]
 
+    # La zona appartiene alla cache: non rietichettare mappe della zona precedente.
+    # Il normale reload ripristina solo le curve zonali della zona corretta e
+    # mantiene i prezzi nazionali tramite il ripristino già previsto dai sensori.
+    if CONF_ZONA in config.options:
+        try:
+            new_zona = Zona[config.options[CONF_ZONA]]
+        except KeyError:
+            _LOGGER.error(
+                "Zona non valida nelle opzioni: %s", config.options[CONF_ZONA]
+            )
+        else:
+            if new_zona != coordinator.pun_data.zona:
+                await hass.config_entries.async_reload(config.entry_id)
+                return
+
     # Aggiorna le impostazioni del coordinator dalle opzioni
     if (CONF_SCAN_HOUR in config.options) and (
         config.options[CONF_SCAN_HOUR] != coordinator.scan_hour
@@ -144,41 +159,6 @@ async def update_listener(hass: HomeAssistant, config: ConfigEntry) -> None:
         coordinator.schedule_token = async_call_later(
             coordinator.hass, timedelta(seconds=5), coordinator.update_pun
         )
-
-    if (CONF_ZONA in config.options) and (
-        (coordinator.pun_data.zona is None)
-        or (config.options[CONF_ZONA] != coordinator.pun_data.zona.name)
-    ):
-        # Modificata la zona di riferimento, cerca l'enum
-        try:
-            new_zona = Zona[config.options[CONF_ZONA]]
-
-        except KeyError:
-            # La zona non esiste
-            _LOGGER.error(
-                "La zona specificata '%s' non esiste. Reimpostata la precedente.",
-                config.options[CONF_ZONA],
-            )
-            new_zona = coordinator.pun_data.zona
-
-        # Controlla se l'operazione ha avuto successo
-        if new_zona != coordinator.pun_data.zona:
-            # Modifica la zona geografica
-            coordinator.pun_data.zona = new_zona
-            _LOGGER.debug(
-                "Modificata la zona geografica in: %s.", coordinator.pun_data.zona.value
-            )
-
-            # Annulla eventuali schedulazioni attive
-            if coordinator.schedule_token is not None:
-                coordinator.schedule_token()
-                coordinator.schedule_token = None
-
-            # Esegue un nuovo aggiornamento immediatamente
-            coordinator.web_retries = WEB_RETRIES_MINUTES.copy()
-            coordinator.schedule_token = async_call_later(
-                coordinator.hass, timedelta(seconds=5), coordinator.update_pun
-            )
 
 
 async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
