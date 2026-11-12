@@ -22,9 +22,7 @@ else:
 
 # Configurazione del selettore compatibile con HA 2023.4.0
 selector_config = selector.SelectSelectorConfig(
-    options=[
-        selector.SelectOptionDict(value=zona.name, label=zona.value) for zona in Zona
-    ],
+    options=[zona.name for zona in Zona],
     mode=selector.SelectSelectorMode.DROPDOWN,
     translation_key="zona",
 )

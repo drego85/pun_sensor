@@ -1,4 +1,32 @@
 {
+  "selector": {
+    "zona": {
+      "options": {
+        "AUST": "Foreign (Austria)",
+        "XAUS": "Interconnection (Austria, coupling)",
+        "CALA": "Italy (Calabria)",
+        "CNOR": "Italy (Centre North)",
+        "CSUD": "Italy (Centre South)",
+        "CORS": "Foreign (Corsica)",
+        "COAC": "Foreign (Corsica AC)",
+        "FRAN": "Foreign (France)",
+        "XFRA": "Interconnection (France, coupling)",
+        "GREC": "Foreign (Greece)",
+        "XGRE": "Interconnection (Greece, coupling)",
+        "NAT": "Italy (national)",
+        "COUP": "Interconnection (Italy, coupling)",
+        "MALT": "Foreign (Malta)",
+        "MONT": "Foreign (Montenegro)",
+        "NORD": "Italy (North)",
+        "SARD": "Italy (Sardinia)",
+        "SICI": "Italy (Sicily)",
+        "SLOV": "Foreign (Slovenia)",
+        "BSP": "Interconnection (Slovenia, coupling)",
+        "SUD": "Italy (South)",
+        "SVIZ": "Foreign (Switzerland)"
+      }
+    }
+  },
   "config": {
     "step": {
       "user": {

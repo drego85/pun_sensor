@@ -1,4 +1,32 @@
 {
+  "selector": {
+    "zona": {
+      "options": {
+        "AUST": "Estero (Austria)",
+        "XAUS": "Scambio (Austria, coupling)",
+        "CALA": "Italia (Calabria)",
+        "CNOR": "Italia (Centro Nord)",
+        "CSUD": "Italia (Centro Sud)",
+        "CORS": "Estero (Corsica)",
+        "COAC": "Estero (Corsica AC)",
+        "FRAN": "Estero (Francia)",
+        "XFRA": "Scambio (Francia, coupling)",
+        "GREC": "Estero (Grecia)",
+        "XGRE": "Scambio (Grecia, coupling)",
+        "NAT": "Italia (nazionale)",
+        "COUP": "Scambio (Italia, coupling)",
+        "MALT": "Estero (Malta)",
+        "MONT": "Estero (Montenegro)",
+        "NORD": "Italia (Nord)",
+        "SARD": "Italia (Sardegna)",
+        "SICI": "Italia (Sicilia)",
+        "SLOV": "Estero (Slovenia)",
+        "BSP": "Scambio (Slovenia, coupling)",
+        "SUD": "Italia (Sud)",
+        "SVIZ": "Estero (Svizzera)"
+      }
+    }
+  },
   "config": {
     "step": {
       "user": {
